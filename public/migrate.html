@@ -47,7 +47,10 @@
 
     const indexedDBData = {};
     for (let key of keys) {
-      indexedDBData[key] = await db.get(key);
+      let res = await db.get(key);
+      if (res === null) {
+        indexedDBData[key] = res
+      }
     }
 
     return {
