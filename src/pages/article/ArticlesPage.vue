@@ -18,7 +18,7 @@ import dayjs from "dayjs";
 import isBetween from "dayjs/plugin/isBetween";
 import isoWeek from 'dayjs/plugin/isoWeek'
 import { useFetch } from "@vueuse/core";
-import { CAN_REQUEST, DICT_LIST, PracticeSaveArticleKey } from "@/config/env.ts";
+import { AppEnv, DICT_LIST, PracticeSaveArticleKey } from "@/config/env.ts";
 import { myDictList } from "@/apis";
 
 dayjs.extend(isoWeek)
@@ -36,7 +36,7 @@ watch(() => store.load, n => {
 }, {immediate: true})
 
 async function init() {
-  if (CAN_REQUEST) {
+  if (AppEnv.CAN_REQUEST) {
     let res = await myDictList({type: "article"})
     if (res.success) {
       store.setState(Object.assign(store.$state, res.data))
@@ -167,8 +167,8 @@ const {data: recommendBookList, isFetching} = useFetch(resourceWrap(DICT_LIST.AR
 
 <template>
   <BasePage>
-    <div class="card flex justify-between gap-space">
-      <div>
+    <div class="card flex flex-col md:flex-row justify-between gap-space p-4 md:p-6">
+      <div class="">
         <Book
             v-if="base.sbook.id"
             :is-add="false"
@@ -180,12 +180,12 @@ const {data: recommendBookList, isFetching} = useFetch(resourceWrap(DICT_LIST.AR
               :is-add="true"
               @click="router.push('/book-list')"/>
       </div>
-      <div class="flex-1">
-        <div class="flex items-center">
-          <div class="title mr-4">本周学习记录</div>
+      <div class="flex-1 md:px-4 min-w-0">
+        <div class="flex items-center min-w-0">
+          <div class="title mr-4 truncate">本周学习记录</div>
           <div class="flex gap-4 color-gray">
             <div
-                class="w-8 h-8 rounded-md center"
+                class="w-6 h-6 md:w-8 md:h-8 rounded-md center text-sm md:text-base"
                 :class="item ? 'bg-[#409eff] color-white' : 'bg-gray-200'"
                 v-for="(item, i) in weekList"
                 :key="i"
@@ -193,34 +193,34 @@ const {data: recommendBookList, isFetching} = useFetch(resourceWrap(DICT_LIST.AR
             </div>
           </div>
         </div>
-        <div class="flex gap-4 items-center mt-3 gap-space">
-          <div class="stat">
-            <div class="num">{{ todayTotalSpend }}</div>
-            <div class="txt">今日学习时长</div>
+        <div class="flex flex-col sm:flex-row gap-4 items-center mt-3 gap-space w-full">
+          <div class="w-full sm:flex-1 rounded-xl p-4 box-border relative bg-[var(--bg-history)] border border-gray-200">
+            <div class="text-[#409eff] text-xl font-bold">{{ todayTotalSpend }}</div>
+            <div class="text-gray-500">今日学习时长</div>
           </div>
-          <div class="stat">
-            <div class="num">{{ totalDay }}</div>
-            <div class="txt">总学习天数</div>
+          <div class="w-full sm:flex-1 rounded-xl p-4 box-border relative bg-[var(--bg-history)] border border-gray-200">
+            <div class="text-[#409eff] text-xl font-bold">{{ totalDay }}</div>
+            <div class="text-gray-500">总学习天数</div>
           </div>
-          <div class="stat">
-            <div class="num">{{ totalSpend }}</div>
-            <div class="txt">总学习时长</div>
+          <div class="w-full sm:flex-1 rounded-xl p-4 box-border relative bg-[var(--bg-history)] border border-gray-200">
+            <div class="text-[#409eff] text-xl font-bold">{{ totalSpend }}</div>
+            <div class="text-gray-500">总学习时长</div>
           </div>
         </div>
-
-        <Progress class="mt-3"
+        <Progress class="mt-3 w-full md:w-auto"
+                  size="large"
                   :percentage="base.currentBookProgress"
                   :format="()=> `${ base.sbook?.lastLearnIndex || 0 }/${base.sbook?.length || 0}篇`"
                   :show-text="true"></Progress>
       </div>
-      <div class="flex flex-col justify-between items-end">
+      <div class="flex flex-row md:flex-col justify-between items-center md:items-end gap-3 mt-4 md:mt-0 min-w-0">
         <div class="flex gap-4 items-center" v-opacity="base.sbook.id">
-          <div class="color-blue cursor-pointer" @click="router.push('/book-list')">更换</div>
+          <div class="color-link cursor-pointer" @click="router.push('/book-list')">更换</div>
         </div>
-        <BaseButton size="large"
+        <BaseButton size="large" class="w-full md:w-auto"
                     @click="startStudy"
                     :disabled="!base.currentBook.name">
-          <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 justify-center w-full">
             <span class="line-height-[2]">{{ isSaveData ? '继续学习' : '开始学习' }}</span>
             <IconFluentArrowCircleRight16Regular class="text-xl"/>
           </div>
@@ -238,10 +238,10 @@ const {data: recommendBookList, isFetching} = useFetch(resourceWrap(DICT_LIST.AR
             </BaseIcon>
           </PopConfirm>
 
-          <div class="color-blue cursor-pointer" v-if="base.article.bookList.length > 1"
+          <div class="color-link cursor-pointer" v-if="base.article.bookList.length > 1"
                @click="isMultiple = !isMultiple; selectIds = []">{{ isMultiple ? '取消' : '管理书籍' }}
           </div>
-          <div class="color-blue cursor-pointer" @click="nav('book-detail', { isAdd: true })">创建个人书籍</div>
+          <div class="color-link cursor-pointer" @click="nav('book-detail', { isAdd: true })">创建个人书籍</div>
         </div>
       </div>
       <div class="flex gap-4 flex-wrap mt-4">
@@ -262,7 +262,7 @@ const {data: recommendBookList, isFetching} = useFetch(resourceWrap(DICT_LIST.AR
       <div class="flex justify-between">
         <div class="title">推荐</div>
         <div class="flex gap-4 items-center">
-          <div class="color-blue cursor-pointer" @click="router.push('/book-list')">更多</div>
+          <div class="color-link cursor-pointer" @click="router.push('/book-list')">更多</div>
         </div>
       </div>
 
@@ -278,8 +278,7 @@ const {data: recommendBookList, isFetching} = useFetch(resourceWrap(DICT_LIST.AR
 
 <style scoped lang="scss">
 .stat {
-  @apply rounded-xl p-4 box-border relative flex-1;
-  background: white;
+  @apply rounded-xl p-4 box-border relative flex-1 bg-[var(--bg-history)];
   border: 1px solid gainsboro;
 
   .num {

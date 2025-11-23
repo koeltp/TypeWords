@@ -66,3 +66,9 @@ Food and talk
     A new play is coming to "The Globe"soon, I said. Will you be seeing it? 
 
 26的 of curse
+
+1、例句可以选中单词，并添加到收藏
+2、ABC页面太墨迹，不简洁，进度复杂，本周学习记录改成日历，有个标记，+激励分享功能，满足炫耀欲望
+
+25/11/18 新网站新增同步数据弹框
+25/11/20 完善登录页面

@@ -4,14 +4,14 @@ import { useSettingStore } from "@/stores/setting.ts";
 import { getAudioFileUrl, usePlayAudio } from "@/hooks/sound.ts";
 import { getShortcutKey, useEventListener } from "@/hooks/event.ts";
 import { checkAndUpgradeSaveDict, checkAndUpgradeSaveSetting, cloneDeep, loadJsLib, shakeCommonDict } from "@/utils";
-import {DefaultShortcutKeyMap, ShortcutKey, WordPracticeMode} from "@/types/types.ts";
+import { DefaultShortcutKeyMap, ShortcutKey, WordPracticeMode } from "@/types/types.ts";
 import BaseButton from "@/components/BaseButton.vue";
 import VolumeIcon from "@/components/icon/VolumeIcon.vue";
 import { useBaseStore } from "@/stores/base.ts";
 import { saveAs } from "file-saver";
 import {
-  APP_NAME, APP_VERSION,
-  EXPORT_DATA_KEY,
+  APP_NAME, APP_VERSION, EMAIL,
+  EXPORT_DATA_KEY, GITHUB,
   LOCAL_FILE_KEY,
   Origin,
   PracticeSaveArticleKey,
@@ -31,6 +31,8 @@ import Textarea from "@/components/base/Textarea.vue";
 import SettingItem from "@/pages/setting/SettingItem.vue";
 import { get, set } from "idb-keyval";
 import { useRuntimeStore } from "@/stores/runtime.ts";
+import { useUserStore } from "@/stores/user.ts";
+import { useExport } from "@/hooks/export.ts";
 
 const emit = defineEmits<{
   toggleDisabledDialogEscKey: [val: boolean]
@@ -40,6 +42,8 @@ const tabIndex = $ref(0)
 const settingStore = useSettingStore()
 const runtimeStore = useRuntimeStore()
 const store = useBaseStore()
+const userStore = useUserStore()
+
 //@ts-ignore
 const gitLastCommitHash = ref(LATEST_COMMIT_HASH);
 const simpleWords = $computed({
@@ -165,65 +169,9 @@ function resetShortcutKeyMap() {
   Toast.success('恢复成功')
 }
 
-let exportLoading = $ref(false)
 let importLoading = $ref(false)
 
-async function exportData(notice = '导出成功！') {
-  exportLoading = true
-  const JSZip = await loadJsLib('JSZip', `${Origin}/libs/jszip.min.js`);
-  let data = {
-    version: EXPORT_DATA_KEY.version,
-    val: {
-      setting: {
-        version: SAVE_SETTING_KEY.version,
-        val: settingStore.$state
-      },
-      dict: {
-        version: SAVE_DICT_KEY.version,
-        val: shakeCommonDict(store.$state)
-      },
-      [PracticeSaveWordKey.key]: {
-        version: PracticeSaveWordKey.version,
-        val: {}
-      },
-      [PracticeSaveArticleKey.key]: {
-        version: PracticeSaveArticleKey.version,
-        val: {}
-      },
-      [APP_VERSION.key]: -1
-    }
-  }
-  let d = localStorage.getItem(PracticeSaveWordKey.key)
-  if (d) {
-    try {
-      data.val[PracticeSaveWordKey.key] = JSON.parse(d)
-    } catch (e) {
-    }
-  }
-  let d1 = localStorage.getItem(PracticeSaveArticleKey.key)
-  if (d1) {
-    try {
-      data.val[PracticeSaveArticleKey.key] = JSON.parse(d1)
-    } catch (e) {
-    }
-  }
-  let r = await get(APP_VERSION.key)
-  data.val[APP_VERSION.key] = r
-
-  const zip = new JSZip();
-  zip.file("data.json", JSON.stringify(data));
-
-  const mp3 = zip.folder("mp3");
-  const allRecords = await get(LOCAL_FILE_KEY);
-  for (const rec of allRecords ?? []) {
-    mp3.file(rec.id + ".mp3", rec.file);
-  }
-  exportLoading = false
-  zip.generateAsync({type: "blob"}).then(function (content) {
-    saveAs(content, `${APP_NAME}-User-Data-${dayjs().format('YYYY-MM-DD HH-mm-ss')}.zip`);
-  });
-  Toast.success(notice)
-}
+const {loading: exportLoading, exportData} = useExport()
 
 function importJson(str: string, notice: boolean = true) {
   let obj = {
@@ -554,7 +502,7 @@ function importOldData() {
           <div class="line"></div>
           <SettingItem mainTitle="自动切换"/>
           <SettingItem title="自动切换下一个单词"
-                       desc="未开启自动切换时，当输入完成后请使用 **空格键** 切换下一个"
+                       desc="仅在 **跟写** 时生效，听写、辨认、默写均不会自动切换，需要手动按 **空格键** 切换"
           >
             <Switch v-model="settingStore.autoNextWord"/>
           </SettingItem>
@@ -618,8 +566,12 @@ function importOldData() {
             <Slider v-model="settingStore.articleSoundSpeed" :step="0.1" :min="0.5" :max="3"/>
             <span class="w-10 pl-5">{{ settingStore.articleSoundSpeed }}</span>
           </SettingItem>
-        </div>
 
+          <div class="line"></div>
+          <SettingItem title="输入时忽略符号/数字">
+            <Switch v-model="settingStore.ignoreSymbol"/>
+          </SettingItem>
+        </div>
 
         <div class="body" v-if="tabIndex === 3">
           <div class="row">
@@ -679,17 +631,75 @@ function importOldData() {
         </div>
 
         <div v-if="tabIndex === 5">
-          <div class="item p-2">
+          <div class="log-item">
             <div class="mb-2">
               <div>
-                <div>更新日期：2025/10/26</div>
-                <div>更新内容：进一步完善单词练习，解决复习数量太多的问题</div>
+                <div>日期：2025/11/22</div>
+                <div>内容：适配移动端</div>
+              </div>
+            </div>
+          </div>
+          <div class="log-item">
+            <div class="mb-2">
+              <div>
+                <div>日期：2025/11/16</div>
+                <div>内容：辨认单词时，不认识单词可以直接输入，自动标识为错误单词，无需按2</div>
+              </div>
+            </div>
+          </div>
+          <div class="log-item">
+            <div class="mb-2">
+              <div>
+                <div>日期：2025/11/15</div>
+                <div>内容：练习单词时，底部工具栏新增“跳到下一阶段”按钮</div>
+              </div>
+            </div>
+          </div>
+          <div class="log-item">
+            <div class="mb-2">
+              <div>
+                <div>日期：2025/11/14</div>
+                <div>内容：新增文章练习时可跳过空格：如果在单词的最后一位上，不按空格直接输入下一个字母的话，自动跳下一个单词，
+                  按空格也自动跳下一个单词
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="log-item">
+            <div class="mb-2">
+              <div>
+                <div>日期：2025/11/13</div>
+                <div>内容：新增文章练习时“输入时忽略符号/数字”选项</div>
+              </div>
+            </div>
+          </div>
+          <div class="log-item">
+            <div class="mb-2">
+              <div>
+                <div>日期：2025/11/6</div>
+                <div>内容：新增随机复习功能</div>
+              </div>
+            </div>
+          </div>
+          <div class="log-item">
+            <div class="mb-2">
+              <div>
+                <div>日期：2025/10/30</div>
+                <div>内容：集成PWA基础配置，支持用户以类App形式打开项目</div>
+              </div>
+            </div>
+          </div>
+          <div class="log-item">
+            <div class="mb-2">
+              <div>
+                <div>日期：2025/10/26</div>
+                <div>内容：进一步完善单词练习，解决复习数量太多的问题</div>
               </div>
               <div class="text-base mt-1">
                 <ol>
                   <li>
                     <div class="title"><b>智能模式优化</b></div>
-                    <div class="desc">练习时新增四种练习模式：学习、复习、听写、默写。</div>
+                    <div class="desc">练习时新增四种练习模式：学习、辨认、听写、默写。</div>
                   </li>
                   <li>
                     <div class="title"><b>学习模式</b></div>
@@ -702,7 +712,7 @@ function importOldData() {
                     </div>
                   </li>
                   <li>
-                    <div class="title"><b>复习模式（新增）</b></div>
+                    <div class="title"><b>辨认模式（新增）</b></div>
                     <div class="desc">
                       <ul>
                         <li>仅在复习已学单词时出现。</li>
@@ -730,13 +740,20 @@ function importOldData() {
                 <div>通过引入「复习」与「默写」两种模式，使复习流程更加灵活、高效。</div>
               </div>
             </div>
-            <div class="line"></div>
           </div>
-          <div class="item p-2">
+          <div class="log-item">
             <div class="mb-2">
               <div>
-                <div>更新日期：2025/9/14</div>
-                <div>更新内容：完善文章编辑、导入、导出等功能</div>
+                <div>日期：2025/10/8</div>
+                <div>内容：文章支持自动播放下一篇</div>
+              </div>
+            </div>
+          </div>
+          <div class="log-item">
+            <div class="mb-2">
+              <div>
+                <div>日期：2025/9/14</div>
+                <div>内容：完善文章编辑、导入、导出等功能</div>
               </div>
               <div class="text-base mt-1">
                 <div>1、文章的音频管理功能，目前已可添加音频、设置句子与音频的对应位置</div>
@@ -744,24 +761,61 @@ function importOldData() {
                 <div>3、单词可导入、导出</div>
               </div>
             </div>
-            <div class="line"></div>
+          </div>
+          <div class="log-item">
+            <div class="mb-2">
+              <div>
+                <div>日期：2025/8/10</div>
+                <div>内容：2.0版本发布，全新UI，全新逻辑，新增短语、例句、近义词等功能</div>
+              </div>
+            </div>
+          </div>
+          <div class="log-item">
+            <div class="mb-2">
+              <div>
+                <div>日期：2025/7/19</div>
+                <div>内容：1.0版本发布</div>
+              </div>
+            </div>
           </div>
         </div>
 
         <div v-if="tabIndex === 6" class="center flex-col">
           <h1>Type Words</h1>
+
+          <!-- 用户信息部分 -->
+          <div v-if="userStore.isLoggedIn && userStore.user" class="user-info-section mb-6">
+            <div class="user-avatar mb-4">
+              <img v-if="userStore.user.avatar" :src="userStore.user.avatar" alt="头像" class="avatar-img"/>
+              <div v-else class="avatar-placeholder">
+                {{ userStore.user.nickname?.charAt(0) || 'U' }}
+              </div>
+            </div>
+            <h3 class="mb-2">{{ userStore.user.nickname || '用户' }}</h3>
+            <p v-if="userStore.user.email" class="text-sm color-gray mb-1">{{ userStore.user.email }}</p>
+            <p v-if="userStore.user.phone" class="text-sm color-gray">{{ userStore.user.phone }}</p>
+
+            <BaseButton
+                @click="userStore.logout"
+                type="info"
+                class="mt-4"
+                :loading="userStore.isLoading"
+            >
+              退出登录
+            </BaseButton>
+          </div>
+
           <p class="w-100 text-xl">
             感谢使用本项目！本项目是开源项目，如果觉得有帮助，请在 GitHub 点个 Star，您的支持是我持续改进的动力。
           </p>
           <p>
-            GitHub地址：<a href="https://github.com/zyronon/TypeWords" target="_blank">https://github.com/zyronon/TypeWords</a>
+            GitHub地址：<a :href="GITHUB" target="_blank">{{ GITHUB }}</a>
           </p>
           <p>
-            反馈：<a
-              href="https://github.com/zyronon/TypeWords/issues" target="_blank">https://github.com/zyronon/TypeWords/issues</a>
+            反馈：<a :href="`${GITHUB}/issues`" target="_blank">{{ GITHUB }}/issues</a>
           </p>
           <p>
-            作者邮箱：<a href="mailto:zyronon@163.com">zyronon@163.com</a>
+            作者邮箱：<a :href="`mailto:${EMAIL}`">{{ EMAIL }}</a>
           </p>
           <div class="text-md color-gray mt-10">
             Build {{ gitLastCommitHash }}
@@ -774,6 +828,80 @@ function importOldData() {
 </template>
 
 <style scoped lang="scss">
+
+.log-item {
+  border-bottom: 1px solid var(--color-input-border);
+  margin-bottom: 1rem;
+}
+
+// 用户信息样式
+.user-info-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  border: 1px solid var(--color-input-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+  width: 100%;
+  max-width: 400px;
+
+  .user-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid var(--color-select-bg);
+
+    .avatar-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .avatar-placeholder {
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 2rem;
+      font-weight: bold;
+    }
+  }
+
+  h3 {
+    margin: 0;
+    color: var(--color-font-1);
+  }
+
+  .text-sm {
+    font-size: 0.9rem;
+    margin: 0.25rem 0;
+  }
+
+  .color-gray {
+    color: #666;
+  }
+
+  .mb-1 {
+    margin-bottom: 0.25rem;
+  }
+
+  .mb-2 {
+    margin-bottom: 0.5rem;
+  }
+
+  .mb-4 {
+    margin-bottom: 1rem;
+  }
+
+  .mt-4 {
+    margin-top: 1rem;
+  }
+}
 
 .setting {
   @apply text-lg;
@@ -903,6 +1031,97 @@ function importOldData() {
     height: 100%;
     width: 100%;
     opacity: 0;
+  }
+}
+
+// 移动端适配
+@media (max-width: 768px) {
+  .setting {
+    flex-direction: column;
+    
+    .left {
+      width: 100%;
+      border-right: none;
+      border-bottom: 2px solid gainsboro;
+      
+      .tabs {
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 0.5rem;
+        gap: 0.3rem;
+        
+        .tab {
+          white-space: nowrap;
+          padding: 0.4rem 0.6rem;
+          font-size: 0.9rem;
+          
+          span {
+            display: none;
+          }
+        }
+      }
+    }
+    
+    .content {
+      padding: 0 1rem;
+      
+      .row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+        min-height: auto;
+        padding: 0.5rem 0;
+        
+        .wrapper {
+          width: 100%;
+          justify-content: flex-start;
+          
+          .set-key {
+            width: 100%;
+            
+            input {
+              width: 100%;
+              max-width: 200px;
+            }
+          }
+          
+          // 补充：选择器和输入框优化
+          .base-select, .base-input {
+            width: 100% !important;
+            max-width: none;
+          }
+          
+          // 单选按钮组优化
+          .radio-group {
+            flex-direction: column;
+            gap: 0.5rem;
+            
+            .radio {
+              min-height: 44px;
+              width: 100%;
+            }
+          }
+          
+          // 滑块优化
+          .slider {
+            width: 100%;
+          }
+        }
+        
+        .main-title {
+          font-size: 1rem;
+        }
+        
+        .item-title {
+          font-size: 0.9rem;
+        }
+      }
+      
+      .body {
+        height: auto;
+        max-height: 60vh;
+      }
+    }
   }
 }
 </style>

@@ -1,8 +1,6 @@
-import { useBaseStore } from "@/stores/base.ts";
-
 export const GITHUB = 'https://github.com/zyronon/TypeWords'
-export const ProjectName = 'Type Words'
-export const Host = '2study.top'
+export const Host = 'typewords.cc'
+export const EMAIL = 'zyronon@163.com'
 export const Origin = `https://${Host}`
 export const APP_NAME = 'Type Words'
 
@@ -16,21 +14,30 @@ const map = {
 }
 
 export const ENV = Object.assign(map['DEV'], common)
-// export const IS_OFFICIAL = import.meta.env.DEV
-// export let IS_LOGIN = true
-export const IS_OFFICIAL = false
-export let IS_LOGIN = false
-export const CAN_REQUEST = IS_LOGIN && IS_OFFICIAL
+
+export let AppEnv = {
+  TOKEN: localStorage.getItem('token') ?? '',
+  IS_OFFICIAL: false,
+  IS_LOGIN: false,
+  CAN_REQUEST: false
+}
+
+AppEnv.IS_LOGIN = !!AppEnv.TOKEN
+AppEnv.CAN_REQUEST = AppEnv.IS_LOGIN && AppEnv.IS_OFFICIAL
+// console.log('AppEnv.CAN_REQUEST',AppEnv.CAN_REQUEST)
+
 export const RESOURCE_PATH = ENV.API + 'static'
+
+const BASE_URL = (import.meta as any).env?.BASE_URL || '/'
 
 export const DICT_LIST = {
   WORD: {
-    ALL: '/list/word.json',
-    RECOMMENDED: '/list/recommend_word.json',
+    ALL: `${BASE_URL}list/word.json`,
+    RECOMMENDED: `${BASE_URL}list/recommend_word.json`,
   },
   ARTICLE: {
-    ALL: '/list/article.json',
-    RECOMMENDED: '/list/article.json',
+    ALL: `${BASE_URL}list/article.json`,
+    RECOMMENDED: `${BASE_URL}list/article.json`,
   }
 }
 
@@ -51,13 +58,14 @@ export const SAVE_DICT_KEY = {
 }
 export const SAVE_SETTING_KEY = {
   key: 'typing-word-setting',
-  version: 16
+  version: 17
 }
 export const EXPORT_DATA_KEY = {
   key: 'typing-word-export',
   version: 4
 }
 export const LOCAL_FILE_KEY = 'typing-word-files'
+
 export const PracticeSaveWordKey = {
   key: 'PracticeSaveWord',
   version: 1

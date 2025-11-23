@@ -1,23 +1,24 @@
-import { defineConfig } from 'vite'
+import {defineConfig} from 'vite'
 import Vue from '@vitejs/plugin-vue'
 import VueJsx from "@vitejs/plugin-vue-jsx";
-import { resolve } from 'path'
-import { visualizer } from "rollup-plugin-visualizer";
+import {resolve} from 'path'
+import {visualizer} from "rollup-plugin-visualizer";
 import SlidePlugin from './src/components/slide/data.js';
-import { getLastCommit } from "git-last-commit";
+import {getLastCommit} from "git-last-commit";
 import UnoCSS from 'unocss/vite'
 import VueMacros from 'unplugin-vue-macros/vite'
 import Icons from 'unplugin-icons/vite'
 import Components from 'unplugin-vue-components/vite'
 import IconsResolver from 'unplugin-icons/resolver'
-import { viteExternalsPlugin } from 'vite-plugin-externals'
+import {viteExternalsPlugin} from 'vite-plugin-externals'
 
 function pathResolve(dir: string) {
   return resolve(__dirname, ".", dir)
 }
 
 const lifecycle = process.env.npm_lifecycle_event;
-let isCdnBuild = ['build', 'report'].includes(lifecycle)
+let isCdnBuild = ['build-oss', 'report-oss'].includes(lifecycle)
+let isAnalyseBuild = ['report-oss', 'report'].includes(lifecycle)
 
 // https://vitejs.dev/config/
 export default defineConfig(() => {
@@ -47,7 +48,7 @@ export default defineConfig(() => {
             },
           }),
           UnoCSS(),
-          lifecycle === 'report' ?
+          isAnalyseBuild ?
             visualizer({
               gzipSize: true,
               brotliSize: true,
@@ -63,9 +64,9 @@ export default defineConfig(() => {
               enforce: 'pre',
               transformIndexHtml(html) {
                 const scripts = `
-<script src="https://2study.top/libs/vue.global.prod.min.js" crossorigin="anonymous"></script>
-<script src="https://2study.top/libs/vue-router.global.prod.min.js" crossorigin="anonymous"></script>
-<script src="https://2study.top/libs/axios.min.js" crossorigin="anonymous"></script>
+<script src="./libs/vue.global.prod.min.js" crossorigin="anonymous"></script>
+<script src="./libs/vue-router.global.prod.min.js" crossorigin="anonymous"></script>
+<script src="./libs/axios.min.js" crossorigin="anonymous"></script>
 `
                 return html.replace('<head>', `<head>${scripts}`)
               },
@@ -106,7 +107,7 @@ export default defineConfig(() => {
           LATEST_COMMIT_HASH: JSON.stringify(latestCommitHash + (process.env.NODE_ENV === 'production' ? '' : ' (dev)')),
         },
         //默认是'',导致只能在一级域名下使用。
-        base: '/',
+        base: './',
         resolve: {
           alias: {
             "@": pathResolve("src"),
@@ -125,9 +126,6 @@ export default defineConfig(() => {
           port: 3000,
           open: false,
           host: '0.0.0.0',
-          fs: {
-            strict: false,
-          },
           proxy: {
             '/baidu': 'https://api.fanyi.baidu.com/api/trans/vip/translate'
           }
